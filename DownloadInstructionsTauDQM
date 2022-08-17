@@ -1,0 +1,104 @@
+Tau DQM List of Instructions and Commands for Opening a Clean Release
+
+First, do most of the commands in this twiki under the section "CMSSW 12 4 0 Instructions"
+(https://twiki.cern.ch/twiki/bin/viewauth/CMS/HLTValidationAndDQM)
+
+This is the first block as I found it on August 17th, 2022
+
+cmsrel CMSSW_12_4_0
+cd CMSSW_12_4_0/src
+cmsenv
+git cms-init
+git remote add cms-l1t-offline git@github.com:cms-l1t-offline/cmssw.git
+git fetch cms-l1t-offline l1t-integration-CMSSW_12_4_0
+git cms-merge-topic -u cms-l1t-offline:l1t-integration-v129.0-CMSSW_12_4_0
+git clone https://github.com/cms-l1t-offline/L1Trigger-L1TCalorimeter.git L1Trigger/L1TCalorimeter/data
+
+git cms-checkdeps -A -a
+
+scram build -j 32 
+
+More to add
+
+git cms-addpkg L1Trigger/L1TGlobal
+
+mkdir -p L1Trigger/L1TGlobal/data/Luminosity/startup
+cd L1Trigger/L1TGlobal/data/Luminosity/startup
+
+#Can probably check more recent versions such as 1_2_0
+wget https://raw.githubusercontent.com/cms-l1-dpg/L1MenuRun3/master/development/L1Menu_Collisions2022_v1_2_0/L1Menu_Collisions2022_v1_2_0.xml
+wget https://raw.githubusercontent.com/cms-l1-dpg/L1MenuRun3/master/development/L1Menu_Collisions2022_v1_2_0/PrescaleTable/UGT_BASE_RS_FINOR_MASK_L1MenuCollisions2022_v1_2_0.xml
+wget https://raw.githubusercontent.com/cms-l1-dpg/L1MenuRun3/master/development/L1Menu_Collisions2022_v1_2_0/PrescaleTable/UGT_BASE_RS_PRESCALES_L1MenuCollisions2022_v1_2_0.xml
+wget https://raw.githubusercontent.com/cms-l1-dpg/L1MenuRun3/master/development/L1Menu_Collisions2022_v1_2_0/L1Menu_Collisions2022_v1_2_0.xml
+
+cd -
+
+git cms-addpkg L1Trigger/Configuration
+
+Edit the file L1Trigger/Configuration/python/customiseUtils.py by changing the L1TriggerMenuFile:
+
+- process.TriggerMenu.L1TriggerMenuFile = cms.string('L1Menu_Collisions2022_v1_1_0.xml') 
++ process.TriggerMenu.L1TriggerMenuFile = cms.string('L1Menu_Collisions2022_v1_2_0.xml')
+git cms-addpkg HLTrigger/Configuration
+git cms-addpkg DQMOffline/Trigger
+git cms-addpkg HLTriggerOffline/Common
+
+scram b -j 32
+
+Now, after all that, we include the changes from Vinaya's personal repo. Once his PR is integrated this step will no longer be necessary.
+
+git remote add vmuralee https://github.com/vmuralee/cmssw.git
+git fetch vmuralee
+git pull vmuralee tau_dqm_update
+
+Here you will probably see a message like the following
+
+From https://github.com/vmuralee/cmssw
+ * branch                    tau_dqm_update -> FETCH_HEAD
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint: 
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint: 
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+fatal: Need to specify how to reconcile divergent branches.
+
+
+git config pull.rebase false
+
+that command just configured how we want to merge things, so now when we do the same pull it will succeed.
+
+git pull vmuralee tau_dqm_update
+
+you should see this output
+
+ DQMOffline/Trigger/interface/HLTTauDQMPath.h          |  7 +++++++
+ DQMOffline/Trigger/interface/HLTTauDQMPlotter.h       |  2 ++
+ DQMOffline/Trigger/plugins/HLTTauDQMOfflineSource.cc  |  2 ++
+ DQMOffline/Trigger/plugins/HLTTauRefProducer.cc       |  3 ++-
+ DQMOffline/Trigger/python/HLTTauDQMOffline_cfi.py     | 55 +++++++++++++++++++++++++++++++++++++++++--------------
+ DQMOffline/Trigger/python/HLTTauPostProcessor_cfi.py  |  1 +
+ DQMOffline/Trigger/src/HLTTauDQMPath.cc               | 10 +++++++++-
+ DQMOffline/Trigger/src/HLTTauDQMTagAndProbePlotter.cc |  2 ++
+
+scram b -j 8
+
+check that everything is merged with vi (or nano or emacs)
+
+vi DQMOffline/Trigger/python/HLTTauDQMOffline_cfi.py
+
+That file should look like the second commit from Vinaya's PR: https://github.com/cms-sw/cmssw/pull/38863/commits/13ee9686cc723036f1971a3377f9bbe35fa5a7db
+
+Note about git cherrypick: Vinaya's instructions from last week use git cherrypick, which works on his repo 
+but for it to work on anyone else's they would have to retrieve his repo first. What we do above is merge the entire repo.
+In general git cherrypick is cleaner, but luckily there weren't any conflicts in Vinaya's release. You can also check that
+the files merged appear in his PR, meaning we're only picking up the changes that are in the PR.
+
+Now we have a clean release with the correct changes present. Next we need to generate the sample.
+

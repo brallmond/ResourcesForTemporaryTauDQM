@@ -1,0 +1,136 @@
+Tau DQM List of Instructions and Commands for Running HLT Offline DQM
+
+Before we do anything, we need to locate a test file. 
+It is convenient to generate a list of files that we'll use later, and then take one file from that list to test before we submit a full run to condor.  
+
+To do this, make sure you're in the src directory of your cmssw release. Then do
+mkdir DatasetInfo
+cd DatasetInfo
+
+now, make a list of runs belonging to a dataset, appending them to a file
+
+dasgoclient --query 'run dataset=/Muon/Run2022D-v1/RAW' > RunsInMuon2022DRaw.list
+
+For each line of that file (a run number), run another dasgoclient query.
+The query asks for the files in the dataset belonging to an available run
+on a site that's available for user-reading (T0_CH_CERN_Disk in this case).
+These files are each written to an output file named after the run they came from.
+
+for line in `cat RunsInMuon2022DRaw.list`; do dasgoclient --query "file dataset=/Muon/Run2022D-v1/RAW run in [$line] site=T0_CH_CERN_Disk" > Run${line}.txt; echo "run $line done"; done
+
+Now, count the number of lines in each output file
+0 means there are no files from that run available at that site
+wc -l Run??????.txt > FilesInRunsBelongingToMuon2022D.txt
+
+We want a run that has many files available because condor jobs fail often, so we use run 357612 in step2. 
+
+Side note, since we are testing the Tau paths in the default GRun menu, so we can start at the "step2" command i.e. no configuration fragment (.cff file) needs to be made (this is something you'd have to do if you were testing your own HLT menu, like if you were optimizing a filter in an existing HLT path). 
+ 
+
+Run 357612 isn't ideal because its lumi is a little low (1.06E34), as you can see here on OMS: https://cmsoms.cern.ch/cms/runs/report?cms_run=357612&cms_run_sequence=GLOBAL-RUN 
+
+Now that we know what files to access, we can use cmsDriver!
+
+Before we submit as much of the dataset as we can with condor, we will test just one file. 
+Here is a command to run ten events from one file.
+
+cmsDriver.py step2 -s RAW2DIGI,L1Reco,RECO,DQM --eventcontent DQM --datatier DQMIO --conditions 124X_dataRun3_v9 --era Run3 --geometry DB:Extended --process reRECO -n 10 --data --filein /store/data/Run2022D/Muon/RAW/v1/000/357/612/00000/000f3d07-0cc7-4742-862b-468f64f583e2.root
+
+This command generates two files
+step2_RAW2DIGI_L1Reco_RECO_DQM.py   and 
+step2_RAW2DIGI_L1Reco_RECO_DQM.root
+
+Next we run step3, which uses the .root file produced in step2 as input.
+
+cmsDriver.py step3 -s HARVESTING:dqmHarvesting --harvesting AtRunEnd --conditions  124X_dataRun3_v9 --era Run3  --geometry DB:Extended --scenario pp  --filein file:step2_RAW2DIGI_L1Reco_RECO_DQM.root --filetype DQM  -n 10 --data
+
+This command generates two files
+step3_HARVESTING.py    and
+DQM_V0001_R000357613__Global__CMSSW_X_Y_Z__RECO.root
+
+To look at graphs, I open the DQM....root file with TBrowser
+
+root -l
+root [0] new TBrowser
+This opens a GUI. Inside the GUI, navigate to the DQM....root file then open the following sequence of nested folders
+DQMData/Run 356712/HLT/Run Summary/TAU/
+then there are three directories, Inclusive, PFTau, and TagAndProbe
+
+The TagAndProbe graphs are what I use mainly for the VBF+2Tau monitoring paths. Inside the directory with the path name you're interested in, there are histograms of tauEtEff, tauEtaEff, tauEtaPhiEfficiency, tauPhiEff as well as a "helper" folder which contains the numerator and denominator histograms that were used to generate those plots. Since we only used a few events, almost all the numerator graphs are empty. I used 100 events when I was testing and it took ~5 minutes for my laptop to get through step2, and there were no events in the path I checked (screenshot in same dir). 
+
+Great! So, by now you've successfully made output for one file. Now we need to use condor to submit many files at once and increase our dataset size. 
+
+Sidenote about the step2 and step3 commands!
+The global tags are updated periodically. Check here before each new condor submission:
+https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideL1TStage2Instructions#Environment_Setup_with_Integrati 
+Our case today, August 17th, 2022, is run3 data, so we use
+124X_dataRun3_v9
+
+Since we want to use the entire file now instead of just ten events, run this command to generate the .py file of step2 again, except this command uses -n -1 (all events) and --no-exec, so it only generates the .py file without executing the command.
+
+cmsDriver.py step2 -s RAW2DIGI,L1Reco,RECO,DQM --eventcontent DQM --datatier DQMIO --conditions 124X_dataRun3_v9 --era Run3 --geometry DB:Extended --process reRECO -n -1 --data --filein /store/data/Run2022D/Muon/RAW/v1/000/357/612/00000/000f3d07-0cc7-4742-862b-468f64f583e2.root --no_exec
+
+Next, make sure you have enough space in eos. I use this command to check my space
+
+du -h /eos/user/b/ballmond/
+
+I think everyone starts with 1T, and I'm using 16G currently. From experience, I know that I can submit about 200 Files without running out of space. However, it would really be better if to know how to do this more exactly, or, even better, be able to use the entire dataset...
+
+Next, make a new directory in /eos for output, something like
+
+mkdir /eos/user/$letter$/$username$/DQM2022Step2FromRaw357612
+
+Make sure you're in your /src/ directory of your CMSSW release and that the list of files you want to submit is in the same directory. Mine looks like this (we made this list of files in the first step, I had a file for each available run but deleted all the ones I'm not using)
+
+[ballmond@lxplus734 src]$ ls
+DQMOffline  HLTriggerOffline  ResourcesForTemporaryTauDQM  SimG4Core   cmsCondorStep2toStep3.py           step2_RAW2DIGI_L1Reco_RECO_DQM.root
+HLTrigger   L1Trigger         Run357612.txt                SimTracker  step2_RAW2DIGI_L1Reco_RECO_DQM.py
+
+The condor command to submit create the jobs for me is
+python3 cmsCondorStep2toStep3.py step2_RAW2DIGI_L1Reco_RECO_DQM.py /afs/cern.ch/user/b/ballmond/public/CMSSW_12_4_0/src /eos/user/b/ballmond/2022DQMStep2FromRAW357612/ Run357612.txt -n 1 -q workday
+
+For you, you need to customise the third and fourth arguments to be your current working directory and output directory on eos. 
+
+It will take some time for the jobs to be generated. Once they have been generated, submit them with the command
+./sub_total.jobb
+
+It will take quite some time (several hours) to generate all the output, but some may be available early.
+You can periodically check simply by ls-ing your output directory and also by checking the status of your condor jobs like so
+[ballmond@lxplus734 src]$ condor_q
+-- Schedd: bigbird14.cern.ch : <137.138.44.75:9618?... @ 08/17/22 21:07:46
+OWNER    BATCH_NAME     SUBMITTED   DONE   RUN    IDLE  TOTAL JOB_IDS
+ballmond ID: 9674162   8/17 21:05      _      _    203    203 9674162.0-202
+
+Once you have output multiple output files in your output directory on eos, you can run step3 with just one change.
+
+Inside the step3 .py file, change the Input source from this
+
+# Input source
+process.source = cms.Source("DQMRootSource",
+    fileNames = cms.untracked.vstring('file:step2_RAW2DIGI_L1Reco_RECO_DQM.root')
+)
+
+Into this (where you use your own output from your own eos directory, right now i'm using a dummy directory with old output)
+
+# Input source
+process.source = cms.Source("DQMRootSource",
+    fileNames = cms.untracked.vstring(
+    'file:/eos/user/b/ballmond/STEAMDQMStep2/step2_RAW2DIGI_L1Reco_RECO_DQM_81.root',
+    'file:/eos/user/b/ballmond/STEAMDQMStep2/step2_RAW2DIGI_L1Reco_RECO_DQM_83.root',
+    'file:/eos/user/b/ballmond/STEAMDQMStep2/step2_RAW2DIGI_L1Reco_RECO_DQM_84.root',
+    'file:/eos/user/b/ballmond/STEAMDQMStep2/step2_RAW2DIGI_L1Reco_RECO_DQM_85.root',
+    'file:/eos/user/b/ballmond/STEAMDQMStep2/step2_RAW2DIGI_L1Reco_RECO_DQM_86.root',
+    'file:/eos/user/b/ballmond/STEAMDQMStep2/step2_RAW2DIGI_L1Reco_RECO_DQM_87.root',
+    'file:/eos/user/b/ballmond/STEAMDQMStep2/step2_RAW2DIGI_L1Reco_RECO_DQM_92.root',
+    'file:/eos/user/b/ballmond/STEAMDQMStep2/step2_RAW2DIGI_L1Reco_RECO_DQM_94.root',
+    'file:/eos/user/b/ballmond/STEAMDQMStep2/step2_RAW2DIGI_L1Reco_RECO_DQM_98.root',
+    'file:/eos/user/b/ballmond/STEAMDQMStep2/step2_RAW2DIGI_L1Reco_RECO_DQM_99.root',
+  )
+)
+
+Finally, run step3 as before. It could take some time, but it will eventually generate a DQM file which you can investigate with TBrowser again.
+
+That should be everything!
+
+
+
