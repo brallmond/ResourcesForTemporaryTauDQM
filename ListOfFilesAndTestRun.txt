@@ -1,0 +1,86 @@
+Tau DQM List of Instructions and Commands for Running HLT Offline DQM
+
+Before we do anything, we need to locate a test file. 
+It is convenient to generate a list of files that we'll use later, 
+and then take one file from that list to test before we submit a full run to condor.  
+
+To do this, make sure you're in the src directory of your cmssw release first.
+Now, make a list of runs belonging to a dataset, appending them to a file
+
+dasgoclient --query 'run dataset=/Muon/Run2022D-v1/RAW' > RunsInMuon2022DRaw.list
+
+For each line of that file (a run number), run another dasgoclient query.
+The query asks for the files in the dataset belonging to an available run
+on a site that's available for user-reading (T0_CH_CERN_Disk in this case).
+These files are each written to an output file named after the run they came from.
+
+for line in `cat RunsInMuon2022DRaw.list`; \
+do dasgoclient --query "file dataset=/Muon/Run2022D-v1/RAW run in [$line] site=T0_CH_CERN_Disk" >\
+ Run${line}.txt; echo "run $line done"; done
+
+Now, count the number of lines in each output file
+0 means there are no files from that run available at that site.
+wc -l Run??????.txt > FilesInRunsBelongingToMuon2022D.txt
+
+We want a run that has many files available because condor jobs fail often, so we use run 357612 in step2. 
+
+Side note, since we are testing the Tau paths in the default GRun menu, 
+we can start at the "step2" command i.e. no configuration fragment (.cff file) 
+needs to be made (this is something you'd have to do if you were testing your 
+own HLT menu, like if you were optimizing a filter in an existing HLT path). 
+ 
+Run 357612 isn't ideal because its lumi is a little low (1.06E34), 
+as you can see here on OMS: https://cmsoms.cern.ch/cms/runs/report?cms_run=357612&cms_run_sequence=GLOBAL-RUN 
+
+Now that we know what files to access, we can use cmsDriver!
+
+Before we submit as much of the dataset as we can with condor, we will test just one file.
+This file name is at the top of one of the files we just generated, Run327612.txt. 
+Here is a command to run ten events from it.
+
+cmsDriver.py step2 -s RAW2DIGI,L1Reco,RECO,DQM --eventcontent DQM \
+--datatier DQMIO --conditions 124X_dataRun3_v9 --era Run3 \
+--geometry DB:Extended --process reRECO -n 10 --data \
+--filein /store/data/Run2022D/Muon/RAW/v1/000/357/612/00000/000f3d07-0cc7-4742-862b-468f64f583e2.root
+
+This command generates two files
+step2_RAW2DIGI_L1Reco_RECO_DQM.py   and 
+step2_RAW2DIGI_L1Reco_RECO_DQM.root
+
+Next we run step3, which uses the .root file produced in step2 as input.
+
+cmsDriver.py step3 -s HARVESTING:dqmHarvesting --harvesting AtRunEnd \
+--conditions  124X_dataRun3_v9 --era Run3  --geometry DB:Extended --scenario pp \
+--filein file:step2_RAW2DIGI_L1Reco_RECO_DQM.root --filetype DQM  -n 10 --data
+
+This command generates two files
+step3_HARVESTING.py    and
+DQM_V0001_R000357613__Global__CMSSW_X_Y_Z__RECO.root
+
+To look at graphs, I open the DQM_V0001_R000357613_Global__CMSSW_X_Y_Z__RECO.root file with TBrowser
+
+root -l
+root [0] new TBrowser
+This opens a GUI. Inside the GUI, navigate to the DQM_V0001_R000357613_Global__CMSSW_X_Y_Z__RECO.root 
+file, then open the following sequence of nested folders
+DQMData/Run 356712/HLT/Run Summary/TAU/
+then there are three directories: Inclusive, PFTau, and TagAndProbe.
+
+The graphs in the TagAndProbe directory are what I mainly use for the VBF+2Tau monitoring paths. 
+Inside the directory with the path name you're interested in, there are histograms 
+of tauEtEff, tauEtaEff, tauEtaPhiEfficiency, tauPhiEff as well as a "helper" folder 
+which contains the numerator and denominator histograms that were used to generate those plots. 
+Since we only used a few events, almost all the numerator graphs are empty. I used 100 events 
+when I was testing and it took ~5 minutes for my laptop to get through step2, and there 
+were no events in the path I checked (screenshot in this directory named \'ScreenshotOfNearlyEmptyGraph.png\'). 
+
+Great! So, by now you've successfully made output for one file. 
+Now we need to use condor to submit many files at once and increase our dataset size. 
+
+Sidenote about the step2 and step3 commands!
+The global tags are updated periodically. Check here before each new condor submission:
+https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideL1TStage2Instructions#Environment_Setup_with_Integrati 
+Our case today, August 17th, 2022, is run3 data, so we use
+124X_dataRun3_v9
+
+Go to FullDataRun.txt
