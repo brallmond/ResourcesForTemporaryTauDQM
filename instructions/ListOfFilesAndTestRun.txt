@@ -72,7 +72,7 @@ of tauEtEff, tauEtaEff, tauEtaPhiEfficiency, tauPhiEff as well as a "helper" fol
 which contains the numerator and denominator histograms that were used to generate those plots. 
 Since we only used a few events, almost all the numerator graphs are empty. I used 100 events 
 when I was testing and it took ~5 minutes for my laptop to get through step2, and there 
-were no events in the path I checked (screenshot in this directory named \'ScreenshotOfNearlyEmptyGraph.png\'). 
+were no events in the path I checked (screenshot in Images directory named ScreenshotOfNearlyEmptyGraph.png). 
 
 Great! So, by now you've successfully made output for one file. 
 Now we need to use condor to submit many files at once and increase our dataset size. 
