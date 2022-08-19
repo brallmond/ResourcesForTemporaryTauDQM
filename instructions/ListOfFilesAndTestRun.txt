@@ -1,4 +1,4 @@
-Tau DQM List of Instructions and Commands for Running HLT Offline DQM
+Tau DQM List of Instructions and Commands for Running HLT Offline DQM Test Run
 
 Before we do anything, we need to locate a test file. 
 It is convenient to generate a list of files that we'll use later, 

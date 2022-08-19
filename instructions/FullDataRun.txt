@@ -1,3 +1,5 @@
+Tau DQM instructions for submitting condor jobs
+
 Again, double-check that your globaltags are correct.
 
 Since we want to use the entire file now instead of just ten events, 
