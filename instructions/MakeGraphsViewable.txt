@@ -1,0 +1,9 @@
+make images locally
+python3 savePNGsFromRoot.py -i DQM_Braden_Diwakar_CombinedFiles_Run357612.root -t Inclusive -o Inclusive
+
+cp to eos space under www directory
+cp Inclusive/*.png /eos/user/b/ballmond/www/InclusiveDQM357612/
+
+call webplot_standalone.py from where it is located
+cd /eos/user/b/ballmond/www/
+python webplot_standalone.py TagAndProbeDQM357612/
