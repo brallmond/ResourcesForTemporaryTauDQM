@@ -7,13 +7,15 @@ ROOT.gROOT.SetBatch(True) # sets visual display off (i.e. no graphs/TCanvas)
 
 if __name__ == "__main__": 
 
-  parser = argparse.ArgumentParser(description='Open a .root file') 
+  parser = argparse.ArgumentParser(description='Open a .root file and save many graphs as pngs.') 
   parser.add_argument('-i', '--inputRootFile', dest='inFilename', action='store', 
                     help='the input .root file\'s name') 
   parser.add_argument('-t', '--tauDirectory', dest='tauDirectory', action='store', default='TagAndProbe',
                     help='which tau directory do you want to save images from?')
   parser.add_argument('-o', '--outputDirectoyr', dest='outputDirectory', action='store', default='images',
                     help='name a directory to store the output.')
+  parser.add_argument('-r', '--runNumber', dest='runNumber', action='store',
+                    help='run number of data being processed')
   args = parser.parse_args() 
 
   inFile = ROOT.TFile.Open(args.inFilename,"READ") 
@@ -41,7 +43,7 @@ if __name__ == "__main__":
   # DON'T end your final directory with "/"
   # It causes a null-pointer for some reason
 
-  directory = "DQMData/Run 357612/HLT/Run summary/TAU/" + args.tauDirectory
+  directory = "DQMData/Run " + args.runNumber + "/HLT/Run summary/TAU/" + args.tauDirectory
   listOfHLTs = inFile.Get(directory).GetListOfKeys()
 
   os.mkdir(args.outputDirectory)
