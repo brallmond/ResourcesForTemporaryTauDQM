@@ -65,8 +65,8 @@ ballmond ID: 9674162   8/17 21:05      _      _    203    203 9674162.0-202
 Once you have output multiple output files in your output directory on eos, 
 you can run step3 with the following command and one additional change.
 
-cmsDriver.py step3 -s HARVESTING:dqmHarvesting --harvesting AtRunEnd --conditions 124X_dataRun3_v9\
---era Run3  --geometry DB:Extended --scenario pp  --filein file:step2_RAW2DIGI_L1Reco_RECO_DQM.root\
+cmsDriver.py step3 -s HARVESTING:dqmHarvesting --harvesting AtRunEnd --conditions 124X_dataRun3_v9 \
+--era Run3  --geometry DB:Extended --scenario pp  --filein file:step2_RAW2DIGI_L1Reco_RECO_DQM.root \
 --filetype DQM  -n -1 --data --no_exec
 
 Inside the step3_HARVESTING.py file just generated, change the Input source from this
