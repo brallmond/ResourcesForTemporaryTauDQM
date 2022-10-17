@@ -11,11 +11,11 @@ if __name__ == "__main__":
   parser.add_argument('-i', '--inputRootFile', dest='inFilename', action='store', 
                     help='the input .root file\'s name') 
   parser.add_argument('-t', '--tauDirectory', dest='tauDirectory', action='store', default='TagAndProbe',
-                    help='which tau directory do you want to save images from?')
+                    help='Inclusive, PFTaus, or TagAndProbe')
   parser.add_argument('-o', '--outputDirectoyr', dest='outputDirectory', action='store', default='images',
-                    help='name a directory to store the output.')
+                    help='name a directory to store the output')
   parser.add_argument('-r', '--runNumber', dest='runNumber', action='store',
-                    help='run number of data being processed')
+                    help='run number of data being processed (use 123 for MiniAOD)')
   args = parser.parse_args() 
 
   inFile = ROOT.TFile.Open(args.inFilename,"READ") 
