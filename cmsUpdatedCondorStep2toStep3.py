@@ -118,8 +118,8 @@ for i in range(nJobs):
     tmp_job.write("cp %s/run_cfg_%s.py .\n" %(outDir, i))
     tmp_job.write("cmsRun run_cfg_%s.py\n" %i)
     tmp_job.write("echo 'sending the file back'\n")
-    tmp_job.write("cp step2_RAW2DIGI_L1Reco_RECO_DQM.root %s/step2_RAW2DIGI_L1Reco_RECO_DQM_%s.root\n" %(outDir, i))
-    tmp_job.write("rm step2_RAW2DIGI_L1Reco_RECO_DQM.root\n")
+    tmp_job.write("cp step2_RAW2DIGI_L1Reco_RECO_PAT.root %s/step2_RAW2DIGI_L1Reco_RECO_PAT_%s.root\n" %(outDir, i))
+    tmp_job.write("rm step2_RAW2DIGI_L1Reco_RECO_PAT.root\n")
     tmp_job.close()
     os.system("chmod +x %s" %(jobDir + tmp_jobname))
 
